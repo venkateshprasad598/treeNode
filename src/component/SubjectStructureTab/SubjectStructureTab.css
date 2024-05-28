@@ -1,0 +1,40 @@
+.entity-view-structure-wrapper {
+  padding: 30px;
+}
+.entity-view-structure-wrapper .entity-box-wrapper.is-parent {
+  /* margin-top: 26px; */
+}
+.entity-view-structure-wrapper .half-circle-start:before {
+  top: 28px;
+}
+.entity-view-structure-wrapper .entity-box-wrapper:before {
+  top: 61px;
+}
+.entity-view-structure-wrapper .entity-box-wrapper:after {
+  top: 47px;
+}
+.entity-view-structure-wrapper .add-entity::before {
+  top: calc(50% - 14px);
+}
+
+.entity-view .half-circle-start {
+  top: 16px;
+}
+
+.entity-view-structure-wrapper .half-circle-start:before {
+  top: 29px;
+}
+.subject-view-box.half-circle-start:before {
+  top: 28px;
+}
+.subject-view-box.half-circle-end:after {
+  top: 34px;
+}
+
+.subject-view-box .connector-line {
+  top: 33px;
+}
+
+.red-badge-bg {
+  background-color: #b7001e;
+}

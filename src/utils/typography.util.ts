@@ -1,0 +1,20 @@
+
+export const typography = {
+  "Heading1-60-Semibold": "font-semibold leading-[72px] text-6xl tracking-[-1.2px]",
+  "Heading2-50-Semibold": "font-semibold leading-[60xp] text-[50px] tracking-[-1px]",
+  "Heading3-40-Semibold": "font-semibold leading-[48px] text-[40px] tracking-tighter",
+  "Heading4-30-Semibold": "font-semibold leading-9 text-3xl tracking-[-0.6px]",
+  "Heading5-24-Semibold": "font-semibold leading-7 text-2xl tracking-[-0.48px]",
+  "Headline-20-Regular": "font-normal leading-6 text-xl",
+  "Headline-20-Medium": "font-medium leading-6 text-xl",
+  "Body-Large-18-Regular": "font-normal leading-[22px] text-lg",
+  "Body-Large-18-Medium": "font-medium leading-[22px] text-lg",
+  "Body-16-Regular": "font-normal leading-5",
+  "Body-16-Medium": "font-medium leading-5",
+  "Footnote-14-Regular": "font-normal leading-[18px]",
+  "Footnote-14-Medium": "font-medium leading-[18px]",
+  "Caption-13-Regular": "text-[13px] font-normal leading-4",
+  "Caption-13-Medium": "text-[13px] font-medium leading-4",
+  "Small-12-Regular": "text-xs  font-normal leading-[14px]",
+  "Small-12-Medium": "text-xs  font-medium leading-[14px]",
+};

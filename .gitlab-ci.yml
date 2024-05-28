@@ -1,0 +1,184 @@
+# include:
+#   - template: Security/Secret-Detection.gitlab-ci.yml
+#   - template: Jobs/SAST.gitlab-ci.yml
+#   - template: Jobs/Dependency-Scanning.gitlab-ci.yml
+#   - template: Jobs/SAST-IaC.gitlab-ci.yml
+#   - template: Security/API-Discovery.gitlab-ci.yml
+
+variables:
+  FORCE_NPM_I:
+    value: "false"
+    options:
+      - "false"
+      - "true"
+    description: "Force 'npm install --force' to run regardless of changes to package.json and update CI node_modules cache. Default = 'false'"
+  DEPLOY_ENVIRONMENT:
+    value: "AV-ENV"
+    options:
+      - "AV-ENV"
+    description: "The deployment target. Set to AV-ENV by default."
+  artifact:
+    value: "dist"
+    description: "Name of the artifact folder that is to be sent to the server. Deafults to 'dist'"
+  app_home:
+    value: "/home/ubuntu/applications/consolidate-ui"
+    description: "Path relative to the root directory of the deployment server. Default '/home/ubuntu/applications/GitLab'"
+
+  DOCKER_HOST: tcp://docker:2375
+  DOCKER_TLS_CERTDIR: ""
+  FF_USE_FASTZIP: "true"
+  ARTIFACT_COMPRESSION_LEVEL: "fast"
+  CACHE_COMPRESSION_LEVEL: "fast"
+
+default:
+  image:
+    name: node:18.17.0
+    pull_policy: if-not-present
+  tags:
+    - asg
+  cache: &global_cache
+    unprotect: true
+    when: "on_success"
+    key:
+      files:
+        - package.json
+    paths:
+      - node_modules
+
+stages:
+  - test
+  - install
+  - test-lint
+  - build
+  - deploy
+  - release
+
+########################################################################################################################
+
+install-dependeices:
+  cache:
+    <<: *global_cache
+    policy: pull-push
+  stage: install
+  rules:
+    - if: ( $CI_PIPELINE_SOURCE == "merge_request_event" || $CI_PIPELINE_SOURCE == "push" || $CI_PIPELINE_SOURCE == "web") && $FORCE_NPM_I == "false"
+      changes:
+        - package.json
+    - if: $FORCE_NPM_I == "true"
+  script:
+    - echo "CI_COMMIT_BEFORE_SHA= $CI_COMMIT_BEFORE_SHA"
+    - echo "CI_COMMIT_BRANCH= $CI_COMMIT_BRANCH"
+    - echo "CI_COMMIT_REF_NAME= $CI_COMMIT_REF_NAME"
+    - echo "CI_COMMIT_SHA= $CI_COMMIT_SHA"
+    - echo $FORCE_NPM_I
+    - NODE_OPTIONS=--max_old_space_size=1000
+    - |
+      case "$FORCE_NPM_I" in
+        "false")
+          npm install --force --prefer-offline --progress=false;;
+        "true")
+          npm install --force;;
+        *)
+          echo "Unknown environment";;
+      esac
+    - npm list -g
+    - npm list
+
+test-lint-job:
+  allow_failure: true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "web" && $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH && $CI_COMMIT_BRANCH !~ /^release\/.*/
+    - if: $CI_PIPELINE_SOURCE == "web" && $CI_COMMIT_BRANCH =~ /^release\/.*/
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^release\/.*/
+      when: never
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: never
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
+      when: never
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME == $CI_DEFAULT_BRANCH && $CI_MERGE_REQUEST_TITLE !~ /^Draft:/
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME != $CI_DEFAULT_BRANCH && $CI_MERGE_REQUEST_TITLE !~ /^Draft:/
+  stage: test-lint
+  script:
+    - CI_COMMIT_BRANCH_rep=$(echo "$CI_COMMIT_BRANCH" | tr '/' '-')
+    - echo $CI_COMMIT_BRANCH_rep
+    - pwd && ls
+    - NODE_OPTIONS=--max_old_space_size=1000
+    - npm run lint
+
+build-job:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "web" && $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH && $CI_COMMIT_BRANCH !~ /^release\/.*/
+    - if: $CI_PIPELINE_SOURCE == "web" && $CI_COMMIT_BRANCH =~ /^release\/.*/
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^release\/.*/
+      when: never
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: never
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
+      when: never
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME == $CI_DEFAULT_BRANCH && $CI_MERGE_REQUEST_TITLE !~ /^Draft:/
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME != $CI_DEFAULT_BRANCH && $CI_MERGE_REQUEST_TITLE !~ /^Draft:/
+  cache:
+    <<: *global_cache
+    policy: pull
+  stage: build
+  script:
+    - CI_COMMIT_BRANCH_rep=$(echo "$CI_COMMIT_BRANCH" | tr '/' '-')
+    - echo $CI_COMMIT_BRANCH_rep
+    - pwd && ls
+    - NODE_OPTIONS=--max_old_space_size=1000
+    - npm list
+    - npm list -g
+    - echo $DEPLOY_ENVIRONMENT
+    - |
+      case "$DEPLOY_ENVIRONMENT" in
+        "AV-ENV")
+          npm run build;;
+        "LC-ENV")
+          npm run build;;
+        *)
+          echo "Unknown environment";;
+      esac
+    - pwd && ls
+  artifacts:
+    paths:
+      - $CI_PROJECT_DIR/$artifact
+    expire_in: 1 hour
+
+AV-ENV-deploy-job:
+  environment:
+    name: DEV
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web" && $CI_COMMIT_BRANCH =~ /^release\/.*/ && $DEPLOY_ENVIRONMENT == 'AV-ENV'
+      when: on_success
+    - if: $CI_PIPELINE_SOURCE == "web" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $DEPLOY_ENVIRONMENT == 'AV-ENV'
+      when: on_success
+    - if: $CI_PIPELINE_SOURCE == "web" && $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH && $CI_COMMIT_BRANCH !~ /^release\/.*/ && $DEPLOY_ENVIRONMENT == 'AV-ENV'
+      when: on_success
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^release\/.*/
+      when: never
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $DEPLOY_ENVIRONMENT == 'AV-ENV'
+      when: never
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH && $CI_COMMIT_BRANCH !~ /^release\/.*/
+      when: never
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME == $CI_DEFAULT_BRANCH
+      when: never
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME != $CI_DEFAULT_BRANCH
+      when: never
+  dependencies:
+    - build-job
+  stage: deploy
+  cache: []
+  script:
+    - |
+      if [ "$app_home" = 'home/ubuntu/applications/' ] || [ "$app_home" = 'home/ubuntu/applications' ]; then
+      echo "Cant deploy directly to applications directory"
+      exit 1
+      fi
+    - CI_COMMIT_BRANCH_rep=$(echo "$CI_COMMIT_BRANCH" | tr '/' '-')
+    - echo $CI_COMMIT_BRANCH_rep
+    - which scp
+    - pwd && ls
+    - chmod 400 "$DEV_TARGET_KP"
+    - scp -o StrictHostKeyChecking=no -i "$DEV_TARGET_KP" -r $CI_PROJECT_DIR/$artifact/ ubuntu@${dev_server_ip}:${app_home}

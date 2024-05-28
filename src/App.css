@@ -1,0 +1,51 @@
+.my-custom-btn:not(.ant-btn-primary) {
+  border: 2px solid transparent;
+  border-radius: 4px;
+  border-image-slice: 1;
+  border: 2px solid;
+  background: #2c2c2c;
+  color: #ffffff;
+}
+
+.custom-select .ant-select-selector {
+  border-radius: 4px;
+  background: #ffffff1a;
+  background-blend-mode: overlay;
+  background: linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0) 10%,
+    #ffffff 250%
+  ) !important;
+  min-width: 100px;
+  border: 1px solid transparent;
+}
+
+.custom-select .ant-select-selection-placeholder {
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 20px;
+  text-align: left;
+  color: #ffffff;
+}
+
+.my-custom-btn.button-gradient {
+  border: 1px solid transparent;
+  border: 1px solid;
+}
+
+.my-custom-btn.button-gradient:hover {
+  border: 1px solid #ffffff !important;
+  color: #ffffff !important;
+}
+
+.my-custom-btn.gradient-grey-white {
+  background: linear-gradient(45deg, rgba(255, 255, 255, 0) 10%, #ffffff 250%);
+}
+
+.my-custom-btn.gradient-grey-white:hover {
+  background: linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0) 10%,
+    #dfdbdb 250%
+  ) !important;
+}
